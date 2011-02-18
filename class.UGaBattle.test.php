@@ -223,6 +223,7 @@ class UGaBattle{
 						'shield' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
 						'shield2' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 						'integrity' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
+						'integrity2' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 						'destroyed' => 0,
 						'count' => $Count,
 						'count2' => $Count,
@@ -244,6 +245,7 @@ class UGaBattle{
 							'shield' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
 							'shield2' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 							'integrity' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
+							'integrity2' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 							'destroyed' => 0,
 							'count' => $Count,
 							'count2' => $Count,
@@ -256,6 +258,7 @@ class UGaBattle{
 							'shield' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
 							'shield2' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 							'integrity' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
+							'integrity2' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 							'destroyed' => 0,
 							'count' => $Count,
 							'count2' => $Count,
@@ -268,6 +271,7 @@ class UGaBattle{
 							'shield' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
 							'shield2' => ($CombatCaps[$Ship]['shield'] * (1 + (0.1 * ($Array[1]['defence_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 							'integrity' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))) * $Count,
+							'integrity2' => ((($pricelist[$Ship]['metal'] + $pricelist[$Ship]['crystal']) / 10) * (1 + (0.1 * ($Array[1]['shield_tech']) + (0.05 * $Array[2]['rpg_amiral'])))),
 							'destroyed' => 0,
 							'count' => $Count,
 							'count2' => $Count,
@@ -316,7 +320,7 @@ class UGaBattle{
 					if(in_array($Pass['ship'], $reslist['defense'])){
 						$rand2 = mt_rand(-10, 10);
 						
-							$Ships = (int)($Pass['count2'] * (($this->DefenseReg + $rand2) / 100 ));
+							$Ships = floor($Pass['count2'] * (($this->DefenseReg + $rand2) / 100 ));
 							if($Ships > 0){
 								$Pass['shield'] == 1;
 								$Pass['integrity'] == 1;
@@ -366,10 +370,73 @@ class UGaBattle{
 									}
 								}
 								$TheAttack = $RestAttack;
-								$ShieldRest = $TheAttack - $AttackTo['shield'];
-								if($ShieldRest > 0){
+								$InitIntegrity = $AttackTo['integrity'];
+								if($TheAttack >= $AttackTo['shield']){
+									$TheAttack -= $AttackTo['shield'];
 									$TotalShield2 += $AttackTo['shield'];
-									$TotalAttack += $TheAttack;									
+									$TotalAttack += $AttackTo['shield'];									
+									if($TheAttack > $AttackTo['integrity']){
+										$TheAttack -= $AttackTo['integrity'];
+										$TotalAttack += $AttackTo['integrity'];
+										$AttackTo['integrity'] = 0;
+									}else{
+										$TotalAttack += $TheAttack;
+										$AttackTo['integrity'] -= $TheAttack;	
+										$TheAttack = 0;
+									}
+									$AttackTo['shield'] = 0;
+								}else{
+									$TotalAttack += $TheAttack;
+									$TotalShield2 += $TheAttack;
+									$AttackTo['shield'] -= $TheAttack;	
+									$TheAttack = 0;
+								}
+								$RestAttack = $TheAttack;
+								$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
+								if($Destroyed > 0){
+									$Destroyed1+= $Destroyed;
+									$AttackTo['count'] -= $Destroyed;
+									$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
+								}
+								$now = false;
+								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1 and $Count2 > 0){
+									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
+									$RfPercent = eval($this->Formulas['rapidfire']);
+									$rand = mt_rand(0, 100);
+									if($rand <= $RfPercent){
+										$now = true;
+									}
+								}
+								if($RestAttack > 0){
+									$now = true;
+								}
+								/*$TheAttack = $RestAttack / $Pass['count'];
+								$Shield = $AttackTo['shield'] / $AttackTo['count'];
+								$Integrity = $AttackTo['integrity'] / $AttackTo['count'];
+								
+								if($TheAttack >= $Shield){
+									$TheAttack -= $Shield;
+									$TotalShield2 += $Shield;
+									$TotalAttack += $Shield;									
+									if($TheAttack > $Integrity){
+										$TheAttack -= $Integrity;
+										$TotalAttack += $Integrity;
+										$Integrity = 0;
+									}else{
+										$TotalAttack += $TheAttack;
+										$Integrity -= $TheAttack;	
+										$TheAttack = 0;
+									}
+									$Shield = 0;
+								}else{
+									$TotalAttack += $TheAttack;
+									$TotalShield2 += $TheAttack;
+									$Shield -= $TheAttack;	
+									$TheAttack = 0;
+								}
+								
+								$ShieldRest = $TheAttack - $AttackTo['shield'];
+								if($ShieldRest > 0){							
 									$AttackTo['integrity'] -= abs($ShieldRest);									
 									if($AttackTo['integrity'] < 0){
 										$RestAttack -= abs($AttackTo['integrity'] - abs($AttackTo['shield']));
@@ -384,6 +451,7 @@ class UGaBattle{
 									$RestAttack = 0;
 
 								}
+								*/
 								/*if($AttackIntegrityPercent < $Pass['attack']){
 									$rand = mt_rand(0, 100);
 									if($rand <= 30){
@@ -391,7 +459,8 @@ class UGaBattle{
 										$AttackTo['shield'] = 0;
 									}
 								}*/
-								$Destroyed = (int)((($AttackTo['shield2'] * $AttackTo['count']) - $AttackTo['shield']) / max(1, abs($ShieldRest)));
+								/*
+								$Destroyed = floor((($AttackTo['shield2'] * $AttackTo['count']) - $AttackTo['shield']) / max(1, abs($ShieldRest)));
 								if($AttackTo['shield'] <= 0 and $AttackTo['integrity'] > 0){
 									$Destroyed1+= $Destroyed;
 									$AttackTo['count'] -= $Destroyed;
@@ -415,6 +484,7 @@ class UGaBattle{
 								if($RestAttack > 0){
 									$now = true;
 								}
+								*/
 					}
 							
 			}	
@@ -444,45 +514,37 @@ class UGaBattle{
 										break;
 									}
 								}
+								
 								$TheAttack = $RestAttack;
-								$ShieldRest = $TheAttack - $AttackTo['shield'];
-								if($ShieldRest > 0){
+								$InitIntegrity = $AttackTo['integrity'];
+								if($TheAttack >= $AttackTo['shield']){
+									$TheAttack -= $AttackTo['shield'];
 									$TotalShield += $AttackTo['shield'];
-									$TotalAttack2 += $TheAttack;									
-									$AttackTo['integrity'] -= $ShieldRest;									
-									if($AttackTo['integrity'] < 0){
-										$RestAttack -= abs($AttackTo['integrity'] - abs($AttackTo['shield']));
+									$TotalAttack2 += $AttackTo['shield'];									
+									if($TheAttack > $AttackTo['integrity']){
+										$TheAttack -= $AttackTo['integrity'];
+										$TotalAttack2 += $AttackTo['integrity'];
+										$AttackTo['integrity'] = 0;
 									}else{
-										$RestAttack = 0;
+										$TotalAttack2 += $TheAttack;
+										$AttackTo['integrity'] -= $TheAttack;	
+										$TheAttack = 0;
 									}
 									$AttackTo['shield'] = 0;
 								}else{
-									$TotalShield += $AttackTo['shield'] - abs($ShieldRest);
 									$TotalAttack2 += $TheAttack;
-									$AttackTo['shield'] -= $TheAttack;
-									$RestAttack = 0;
-
+									$TotalShield += $TheAttack;
+									$AttackTo['shield'] -= $TheAttack;	
+									$TheAttack = 0;
 								}
-								/*if($AttackIntegrityPercent < $Pass['attack']){
-									$rand = mt_rand(0, 100);
-									if($rand <= 30){
-										//BOOOOMM!!!!
-										$AttackTo['shield'] = 0;
-									}
-								}*/
-								$Destroyed = (int)((($AttackTo['shield2'] * $AttackTo['count']) - $AttackTo['shield']) / max(1, abs($ShieldRest)));
-								if($AttackTo['shield'] <= 0 and $AttackTo['integrity'] > 0){
-									$Destroyed2+= $Destroyed;
+								$RestAttack = $TheAttack;
+								$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
+								if($Destroyed > 0){
+									$Destroyed2 += $Destroyed;
 									$AttackTo['count'] -= $Destroyed;
-									$AttackTo['shield'] = $AttackTo['shield2'] * $AttackTo['count'];
 									$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
-								}elseif($AttackTo['shield'] <= 0 and $AttackTo['integrity'] <= 0){
-									$Destroyed2+= $Destroyed;
-									$AttackTo['count'] 	= 0;
-									$AttackTo['shield'] = 0;
-									$AttackTo['attack'] = 0;	
 								}
-								$now = false;								
+								$now = false;
 								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1 and $Count2 > 0){
 									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
 									$RfPercent = eval($this->Formulas['rapidfire']);
@@ -786,10 +848,10 @@ $totaltime = $time_end - $time_start;
 					$raport .= "</table></center>";
 				}
 				$raport .= "</th></tr></table>";
-					$TotalAttack['defenders'] += (int)($b["Materials"]["attack_a"] - (int)($b["Materials"]["shield_b"]));
-					$TotalAttack['attackers'] += (int)($b["Materials"]["attack_b"] - (int)($b["Materials"]["shield_a"]));
-					$AttackWaveStat    = sprintf ($lang['sys_attack_attack_wave'], pretty_number((int)($b["Materials"]["attack_a"])), pretty_number((int)($b["Materials"]["shield_b"])));
-					$DefendWavaStat    = sprintf ($lang['sys_attack_defend_wave'], pretty_number((int)($b["Materials"]["attack_b"])), pretty_number((int)($b["Materials"]["shield_a"])));
+					$TotalAttack['defenders'] += floor($b["Materials"]["attack_a"] - floor($b["Materials"]["shield_b"]));
+					$TotalAttack['attackers'] += floor($b["Materials"]["attack_b"] - floor($b["Materials"]["shield_a"]));
+					$AttackWaveStat    = sprintf ($lang['sys_attack_attack_wave'], pretty_number(floor($b["Materials"]["attack_a"])), pretty_number(floor($b["Materials"]["shield_b"])));
+					$DefendWavaStat    = sprintf ($lang['sys_attack_defend_wave'], pretty_number(floor($b["Materials"]["attack_b"])), pretty_number(floor($b["Materials"]["shield_a"])));
 					$raport           .= "<br />".$AttackWaveStat."<br />".$DefendWavaStat."</center></th></tr><tr height='10'><td>&nbsp;</td></tr>";
 			}
 			$raport .= "<tr height='10'><td>&nbsp;</td></tr><tr><td class='c'>Resultado de la batalla:</td></tr><tr><th><center>";
@@ -888,7 +950,7 @@ $totaltime = $time_end - $time_start;
 			// mod TOP KB
 			
 			//raiders
-			$unidades  = (int)($Mining['metal']+$Mining['crystal']+$Mining['deuter']+$Mining['hidrogeno']);
+			$unidades  = floor($Mining['metal']+$Mining['crystal']+$Mining['deuter']+$Mining['hidrogeno']);
 			$unidades =  $unidades/1500000;
 
 			
