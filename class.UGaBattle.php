@@ -34,8 +34,7 @@
 class UGaBattle{
 	private $Attackers, $Defenders, $MaxRounds, $DefenseReg, $EmpMissileBlock, $Battles, $Formulas;
 	function __construct($Attackers, $Defenders, $MaxRounds = 6, $DefenseReg = 70, $EmpMissileBlock = false, $Formulas = array('rapidfire' => 'return (( $RF - 1 ) / $RF) * 100;')){
-		//ignore_user_abort(1);
-		ini_set("max_execution_time", 10);
+		ignore_user_abort(1);
 		if(intval(str_replace('M', '', ini_get("memory_limit"))) < 16 ){
 			ini_set("memory_limit","16M");
 		}
@@ -72,9 +71,9 @@ class UGaBattle{
 				}else{
 					$this->Battles[$Round - 1]['attackers'][$Order]['Ships'] = $Count['all'];
 					$AttAny = true;
-				}		
+				}
 			}
-			foreach($this->Defenders as $Order => $Player){
+			foreach($this->Defenders as $Order => $Player){	
 				$this->Battles[$Round - 1]['defenders'][$Order] = array();
 				$Count = $this->CleanShips($Player);
 				if($Count['total'] == 0){
@@ -82,7 +81,7 @@ class UGaBattle{
 				}else{
 					$this->Battles[$Round - 1]['defenders'][$Order]['Ships'] = $Count['all'];
 					$DefAny = true;
-				}		
+				}
 			}
 			$CurrentRound = $this->CombatRound();
 			$this->Battles[$Round - 1]['Materials'] = $this->RoundClean();
@@ -392,12 +391,16 @@ class UGaBattle{
 									$TheAttack = 0;
 								}
 								$RestAttack = $TheAttack;
-								$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
-								if($Destroyed > 0){
-									$Destroyed1+= $Destroyed;
-									$AttackTo['count'] -= $Destroyed;
-									$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
-								}
+								if($AttackTo['count'] > 0 and $AttackTo['integrity2'] > 0){
+									$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
+									if($Destroyed > 0){
+										$Destroyed1+= $Destroyed;
+										$AttackTo['count'] -= $Destroyed;
+										$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
+									}
+								}else{
+									$Destroyed = 0;
+								} 	
 								$now = false;
 								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1 and $Count2 > 0){
 									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
@@ -410,81 +413,6 @@ class UGaBattle{
 								if($RestAttack > 0){
 									$now = true;
 								}
-								/*$TheAttack = $RestAttack / $Pass['count'];
-								$Shield = $AttackTo['shield'] / $AttackTo['count'];
-								$Integrity = $AttackTo['integrity'] / $AttackTo['count'];
-								
-								if($TheAttack >= $Shield){
-									$TheAttack -= $Shield;
-									$TotalShield2 += $Shield;
-									$TotalAttack += $Shield;									
-									if($TheAttack > $Integrity){
-										$TheAttack -= $Integrity;
-										$TotalAttack += $Integrity;
-										$Integrity = 0;
-									}else{
-										$TotalAttack += $TheAttack;
-										$Integrity -= $TheAttack;	
-										$TheAttack = 0;
-									}
-									$Shield = 0;
-								}else{
-									$TotalAttack += $TheAttack;
-									$TotalShield2 += $TheAttack;
-									$Shield -= $TheAttack;	
-									$TheAttack = 0;
-								}
-								
-								$ShieldRest = $TheAttack - $AttackTo['shield'];
-								if($ShieldRest > 0){							
-									$AttackTo['integrity'] -= abs($ShieldRest);									
-									if($AttackTo['integrity'] < 0){
-										$RestAttack -= abs($AttackTo['integrity'] - abs($AttackTo['shield']));
-									}else{
-										$RestAttack = 0;
-									}
-									$AttackTo['shield'] = 0;
-								}else{
-									$TotalShield2 += $AttackTo['shield'] - abs($ShieldRest);
-									$TotalAttack += $TheAttack;
-									$AttackTo['shield'] -= $TheAttack;
-									$RestAttack = 0;
-
-								}
-								*/
-								/*if($AttackIntegrityPercent < $Pass['attack']){
-									$rand = mt_rand(0, 100);
-									if($rand <= 30){
-										//BOOOOMM!!!!
-										$AttackTo['shield'] = 0;
-									}
-								}*/
-								/*
-								$Destroyed = floor((($AttackTo['shield2'] * $AttackTo['count']) - $AttackTo['shield']) / max(1, abs($ShieldRest)));
-								if($AttackTo['shield'] <= 0 and $AttackTo['integrity'] > 0){
-									$Destroyed1+= $Destroyed;
-									$AttackTo['count'] -= $Destroyed;
-									$AttackTo['shield'] = $AttackTo['shield2'] * $AttackTo['count'];
-									$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
-								}elseif($AttackTo['shield'] <= 0 and $AttackTo['integrity'] <= 0){
-									$Destroyed1+= $Destroyed;
-									$AttackTo['count'] 	= 0;
-									$AttackTo['shield'] = 0;
-									$AttackTo['attack'] = 0;
-								}
-								$now = false;
-								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1 and $Count2 > 0){
-									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
-									$RfPercent = eval($this->Formulas['rapidfire']);
-									$rand = mt_rand(0, 100);
-									if($rand <= $RfPercent){
-										$now = true;
-									}
-								}
-								if($RestAttack > 0){
-									$now = true;
-								}
-								*/
 					}
 							
 			}	
@@ -538,12 +466,16 @@ class UGaBattle{
 									$TheAttack = 0;
 								}
 								$RestAttack = $TheAttack;
-								$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
-								if($Destroyed > 0){
-									$Destroyed2 += $Destroyed;
-									$AttackTo['count'] -= $Destroyed;
-									$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
-								}
+								if($AttackTo['count'] > 0 and $AttackTo['integrity2'] > 0){
+									$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
+									if($Destroyed > 0){
+										$Destroyed2+= $Destroyed;
+										$AttackTo['count'] -= $Destroyed;
+										$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
+									}
+								}else{
+									$Destroyed = 0;
+								} 
 								$now = false;
 								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1 and $Count2 > 0){
 									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
@@ -564,6 +496,4 @@ class UGaBattle{
 	}
 
 }
-
-
 ?>
