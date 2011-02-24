@@ -28,7 +28,7 @@
  *
  * @author shoghicp@gmail.com
  *
-
+ * Now works Rapid Fire, Attack Bounce, "Proportional" Attack (simulates attack of units in total), Explosions
 */
 
 class UGaBattle{
@@ -131,7 +131,7 @@ class UGaBattle{
 		$LostUnits = array(0,0);
 		foreach($this->Attackers as $Array){
 			foreach($Array as $Pass){
-					$Pass['shield'] = $Pass['shield2'];
+					$Pass['shield'] = $Pass['shield2'] * $Pass['count'];
 					if(($Pass['count'] <= $Pass['count2']) or ($Pass['integrity'] <= 0 and $Pass['destroyed'] == 0)){
 						if(in_array($Pass['ship'], $reslist['fleet'])){
 							if(UNI_TYPE == 4){
@@ -157,7 +157,7 @@ class UGaBattle{
 		}
 		foreach($this->Defenders as $Array){
 			foreach($Array as $Pass){
-					$Pass['shield'] = $Pass['shield2'];
+					$Pass['shield'] = $Pass['shield2'] * $Pass['count'];
 					if(($Pass['count'] <= $Pass['count2']) or ($Pass['integrity'] <= 0 and $Pass['destroyed'] == 0)){
 						if(in_array($Pass['ship'], $reslist['fleet']) or (defined('DEFENSE_TO_DEBRIS') and DEFENSE_TO_DEBRIS == 1)){
 							if(UNI_TYPE == 4){
@@ -349,8 +349,11 @@ class UGaBattle{
 						continue;
 					}
 					$now = true;
-					$RestAttack = $Pass['attack'];
 					while($now == true){
+								if($Pass['count'] <= 0){
+									$Pass['count'] = 0;
+									break;
+								}
 								$Rand1 = mt_rand(0, (count($this->Defenders) - 1));
 								$Rand2 = mt_rand(0, (count($this->Defenders[$Rand1]) - 1));
 								$AttackTo =& $this->Defenders[$Rand1][$Rand2];
@@ -368,50 +371,54 @@ class UGaBattle{
 										break;
 									}
 								}
-								$TheAttack = $RestAttack;
-								$InitIntegrity = $AttackTo['integrity'];
-								if($TheAttack >= $AttackTo['shield']){
-									$TheAttack -= $AttackTo['shield'];
-									$TotalShield2 += $AttackTo['shield'];
-									$TotalAttack += $AttackTo['shield'];									
-									if($TheAttack > $AttackTo['integrity']){
-										$TheAttack -= $AttackTo['integrity'];
-										$TotalAttack += $AttackTo['integrity'];
-										$AttackTo['integrity'] = 0;
-									}else{
-										$TotalAttack += $TheAttack;
-										$AttackTo['integrity'] -= $TheAttack;	
-										$TheAttack = 0;
-									}
-									$AttackTo['shield'] = 0;
-								}else{
-									$TotalAttack += $TheAttack;
-									$TotalShield2 += $TheAttack;
-									$AttackTo['shield'] -= $TheAttack;	
-									$TheAttack = 0;
+								$Attack = $Pass['attack'] / $Pass['count'];
+								$AttackedShield = 0;
+								$AttackedIntegrity = 0;
+								$Integrity = $AttackTo['integrity'] / $AttackTo['count'];								
+								$Shield = $AttackTo['shield'] / $AttackTo['count'];
+								$ShieldPercentage = ($Attack / $Shield) * 100;
+								if($ShieldPercentage <= 1){
+									break;
 								}
-								$RestAttack = $TheAttack;
-								if($AttackTo['count'] > 0 and $AttackTo['integrity2'] > 0){
-									$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
+								$Shield2 = max(0, $Shield - $Attack);
+								$Attack2 = max(0, $Attack - $Shield);
+								$AttackedShield = $Attack - $Attack2;
+								$Shield = $Shield2;
+								$Attack = $Attack2;
+								if($Shield == 0 and $Attack > 0){
+									$Integrity2 = max(0, $Integrity - $Attack);
+									$Attack2 = max(0, $Attack - $Integrity);
+									$AttackedIntegrity = $Attack - $Attack2;
+									$Integrity = $Integrity2;
+									$Attack = $Attack2;									
+									$AttackTo['integrity'] -= $AttackedIntegrity * $Pass['count'];
+								}
+								$TotalAttack += ($AttackedShield + $AttackedIntegrity) * $Pass['count'];
+								$TotalShield2 += $AttackedShield * $Pass['count'];
+								$AttackTo['shield'] -= $AttackedShield * $Pass['count'];
+								$DamagePercentage = 100 - (($AttackTo['integrity'] / $AttackTo['integrity2']) * 100);
+								unset($Shield2, $Integrity2, $Attack2);
+								$Destroyed = 0;
+								if(mt_rand(0, 100) <= $DamagePercentage){
+									$Destroyed += $Pass['count'];
+								}
+								$AttackTo['integrity'] = max(0, min(($AttackTo['integrity2'] * $AttackTo['count']), $AttackTo['integrity']));
+								$AttackTo['shield'] = max(0, min(($AttackTo['shield2'] * $AttackTo['count']), $AttackTo['shield']));
+								if(($AttackTo['count'] > 0 and $AttackTo['integrity2'] > 0) or $Destroyed > 0){
+									$Destroyed += floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
 									if($Destroyed > 0){
 										$Destroyed1+= $Destroyed;
 										$AttackTo['count'] -= $Destroyed;
-										$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
-									}
-								}else{
-									$Destroyed = 0;
-								} 	
-								$now = false;
-								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1 and $Count2 > 0){
-									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
-									$RfPercent = eval($this->Formulas['rapidfire']);
-									$rand = mt_rand(0, 100);
-									if($rand <= $RfPercent){
-										$now = true;
+										$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];
 									}
 								}
-								if($RestAttack > 0){
-									$now = true;
+								$now = false;
+								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1){
+									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
+									$RfPercent = eval($this->Formulas['rapidfire']);
+									if(mt_rand(0, 100) <= $RfPercent){
+										$now = true;
+									}
 								}
 					}
 							
@@ -423,15 +430,18 @@ class UGaBattle{
 						continue;
 					}
 					$now = true;
-					$RestAttack = $Pass['attack'];
 					while($now == true){
+								if($Pass['count'] <= 0){
+									$Pass['count'] = 0;
+									break;
+								}
 								$Rand1 = mt_rand(0, (count($this->Attackers) - 1));
 								$Rand2 = mt_rand(0, (count($this->Attackers[$Rand1]) - 1));
 								$AttackTo =& $this->Attackers[$Rand1][$Rand2];
 								if($AttackTo['destroyed'] == 1 or $AttackTo['count'] <= 0){
 									$Continue = false;
 									foreach($this->Attackers as $Count => $Player){
-										$Rest = $this->CleanShips($Player);
+										$Rest = $this->CleanShips($Player); //Cuello de botella
 										if($Rest['total'] > 0){
 											$Continue = true;
 										}
@@ -442,52 +452,56 @@ class UGaBattle{
 										break;
 									}
 								}
-								
-								$TheAttack = $RestAttack;
-								$InitIntegrity = $AttackTo['integrity'];
-								if($TheAttack >= $AttackTo['shield']){
-									$TheAttack -= $AttackTo['shield'];
-									$TotalShield += $AttackTo['shield'];
-									$TotalAttack2 += $AttackTo['shield'];									
-									if($TheAttack > $AttackTo['integrity']){
-										$TheAttack -= $AttackTo['integrity'];
-										$TotalAttack2 += $AttackTo['integrity'];
-										$AttackTo['integrity'] = 0;
-									}else{
-										$TotalAttack2 += $TheAttack;
-										$AttackTo['integrity'] -= $TheAttack;	
-										$TheAttack = 0;
-									}
-									$AttackTo['shield'] = 0;
-								}else{
-									$TotalAttack2 += $TheAttack;
-									$TotalShield += $TheAttack;
-									$AttackTo['shield'] -= $TheAttack;	
-									$TheAttack = 0;
+								$Attack = $Pass['attack'] / $Pass['count'];
+								$AttackedShield = 0;
+								$AttackedIntegrity = 0;
+								$Integrity = $AttackTo['integrity'] / $AttackTo['count'];								
+								$Shield = $AttackTo['shield'] / $AttackTo['count'];
+								$ShieldPercentage = ($Attack / $Shield) * 100;
+								if($ShieldPercentage <= 1){
+									break;
 								}
-								$RestAttack = $TheAttack;
-								if($AttackTo['count'] > 0 and $AttackTo['integrity2'] > 0){
-									$Destroyed = floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
+								$Shield2 = max(0, $Shield - $Attack);
+								$Attack2 = max(0, $Attack - $Shield);
+								$AttackedShield = $Attack - $Attack2;
+								$Shield = $Shield2;
+								$Attack = $Attack2;
+								if($Shield == 0 and $Attack > 0){
+									$Integrity2 = max(0, $Integrity - $Attack);
+									$Attack2 = max(0, $Attack - $Integrity);
+									$AttackedIntegrity = $Attack - $Attack2;
+									$Integrity = $Integrity2;
+									$Attack = $Attack2;									
+									$AttackTo['integrity'] -= $AttackedIntegrity * $Pass['count'];
+								}
+								$TotalAttack2 += ($AttackedShield + $AttackedIntegrity) * $Pass['count'];
+								$TotalShield += $AttackedShield * $Pass['count'];
+								$AttackTo['shield'] -= $AttackedShield * $Pass['count'];
+								$DamagePercentage = 100 - (($AttackTo['integrity'] / $AttackTo['integrity2']) * 100);
+								unset($Shield2, $Integrity2, $Attack2);
+								$Destroyed = 0;
+								if(mt_rand(0, 100) <= $DamagePercentage){
+									$Destroyed += $Pass['count'];
+								}
+								$AttackTo['integrity'] = max(0, min(($AttackTo['integrity2'] * $AttackTo['count']), $AttackTo['integrity']));
+								$AttackTo['shield'] = max(0, min(($AttackTo['shield2'] * $AttackTo['count']), $AttackTo['shield']));
+								if(($AttackTo['count'] > 0 and $AttackTo['integrity2'] > 0) or $Destroyed > 0){
+									$Destroyed += floor(abs($AttackTo['integrity2'] * $AttackTo['count'] - $AttackTo['integrity']) / $AttackTo['integrity2']);
 									if($Destroyed > 0){
 										$Destroyed2+= $Destroyed;
 										$AttackTo['count'] -= $Destroyed;
-										$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];	
+										$AttackTo['attack'] = $AttackTo['attack2'] * $AttackTo['count'];
 									}
-								}else{
-									$Destroyed = 0;
-								} 
+								}
 								$now = false;
-								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1 and $Count2 > 0){
+								if($CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']] > 1){
 									$RF = $CombatCaps[$Pass['ship']]['sd'][$AttackTo['ship']];
 									$RfPercent = eval($this->Formulas['rapidfire']);
-									$rand = mt_rand(0, 100);
-									if($rand <= $RfPercent){
+									if(mt_rand(0, 100) <= $RfPercent){
 										$now = true;
 									}
 								}
-								if($RestAttack > 0){
-									$now = true;
-								}
+
 					}
 							
 			}	
