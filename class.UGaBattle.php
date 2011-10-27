@@ -1,3 +1,4 @@
+
 <?php
 /*
   _    _                                      _                   _                 
@@ -8,29 +9,29 @@
   \____/   \__, |  \__,_| |_| |_| |_|  \___| |_|  \__,_| | .__/  |_|  \__,_|  \__, |
             __/ |                                        | |                   __/ |
            |___/                                         |_|                  |___/ 
-
-
+ 
+ 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Lesser General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
-
+ 
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU Lesser General Public License for more details.
-
+ 
     You should have received a copy of the GNU Lesser General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
  
-
+ 
+ 
  *
  * @author shoghicp@gmail.com
  *
  * Now works Rapid Fire, Attack Bounce, "Proportional" Attack (simulates attack of units in total), Explosions
 */
-
+ 
 class UGaBattle{
 	private $Attackers, $Defenders, $MaxRounds, $DefenseReg, $EmpMissileBlock, $Battles, $Formulas;
 	function __construct($Attackers, $Defenders, $MaxRounds = 6, $DefenseReg = 70, $EmpMissileBlock = false, $Formulas = array('rapidfire' => 'return (( $RF - 1 ) / $RF) * 100;')){
@@ -41,6 +42,9 @@ class UGaBattle{
 		$this->MaxRounds = intval($MaxRounds);
 		if(intval($DefenseReg) > 100){
 			$DefenseReg == 100;
+		}
+		if(!defined('UNI_TYPE')){
+			define("UNI_TYPE",1);
 		}
 		$this->Formulas = $Formulas;
 		$this->Battles = array();
@@ -129,55 +133,56 @@ class UGaBattle{
 		global $lang, $resource, $reslist, $pricelist, $CombatCaps, $game_config;
 		$Debris = array('metal' => 0, 'crystal' => 0);
 		$LostUnits = array(0,0);
-		foreach($this->Attackers as $Array){
-			foreach($Array as $Pass){
-					$Pass['shield'] = $Pass['shield2'] * $Pass['count'];
-					if(($Pass['count'] <= $Pass['count2']) or ($Pass['integrity'] <= 0 and $Pass['destroyed'] == 0)){
-						if(in_array($Pass['ship'], $reslist['fleet'])){
+		foreach($this->Attackers as $ID1 => $Array){
+			foreach($Array as $ID2 => $Pass){
+					$Ship =& $this->Attackers[$ID1][$ID2];
+					$Ship['shield'] = $Ship['shield2'] * $Ship['count'];
+					if(($Ship['count'] <= $Ship['count2']) or ($Ship['integrity'] <= 0 and $Ship['destroyed'] == 0)){
+						if(in_array($Ship['ship'], $reslist['fleet'])){
 							if(UNI_TYPE == 4){
-								$Debris['metal'] += $pricelist[$Pass['ship']]['metal'] * 0.5 * ($Pass['count2'] - $Pass['count']);
-								$Debris['crystal'] += $pricelist[$Pass['ship']]['crystal'] * 0.5 * ($Pass['count2'] - $Pass['count']);							
+								$Debris['metal'] += $pricelist[$Ship['ship']]['metal'] * 0.5 * ($Ship['count2'] - $Ship['count']);
+								$Debris['crystal'] += $pricelist[$Ship['ship']]['crystal'] * 0.5 * ($Ship['count2'] - $Ship['count']);							
 							}else{
-								$Debris['metal'] += $pricelist[$Pass['ship']]['metal'] * 0.3 * ($Pass['count2'] - $Pass['count']);
-								$Debris['crystal'] += $pricelist[$Pass['ship']]['crystal'] * 0.3 * ($Pass['count2'] - $Pass['count']);
+								$Debris['metal'] += $pricelist[$Ship['ship']]['metal'] * 0.3 * ($Ship['count2'] - $Ship['count']);
+								$Debris['crystal'] += $pricelist[$Ship['ship']]['crystal'] * 0.3 * ($Ship['count2'] - $Ship['count']);
 							}
 						}
-						$LostUnits[0] += ($pricelist[$Pass['ship']]['metal'] * ($Pass['count2'] - $Pass['count']) + $pricelist[$Pass['ship']]['crystal'] * ($Pass['count2'] - $Pass['count']) + $pricelist[$Pass['ship']]['deuterium'] * ($Pass['count2'] - $Pass['count']) + $pricelist[$Pass['ship']]['hidrogeno'] * ($Pass['count2'] - $Pass['count']));
-						if($Pass['count'] > 0){
-							$Pass['count2'] = $Pass['count'];
+						$LostUnits[0] += ($pricelist[$Ship['ship']]['metal'] * ($Ship['count2'] - $Ship['count']) + $pricelist[$Ship['ship']]['crystal'] * ($Ship['count2'] - $Ship['count']) + $pricelist[$Ship['ship']]['deuterium'] * ($Ship['count2'] - $Ship['count']) + $pricelist[$Ship['ship']]['hidrogeno'] * ($Ship['count2'] - $Ship['count']));
+						if($Ship['count'] > 0){
+							$Ship['count2'] = $Ship['count'];
 						}else{
-							$Pass['destroyed'] = 1;
-							$Pass['count'] = 0;
-							$Pass['count2'] = 0;
+							$Ship['destroyed'] = 1;
+							$Ship['count'] = 0;
+							$Ship['count2'] = 0;
 						}
 					}
 					
 							
-			}	
+			}			
 		}
-		foreach($this->Defenders as $Array){
-			foreach($Array as $Pass){
-					$Pass['shield'] = $Pass['shield2'] * $Pass['count'];
-					if(($Pass['count'] <= $Pass['count2']) or ($Pass['integrity'] <= 0 and $Pass['destroyed'] == 0)){
-						if(in_array($Pass['ship'], $reslist['fleet']) or (defined('DEFENSE_TO_DEBRIS') and DEFENSE_TO_DEBRIS == 1)){
+		foreach($this->Defenders as $ID1 => $Array){
+			foreach($Array as $ID2 => $Pass){
+					$Ship =& $this->Defenders[$ID1][$ID2];
+					$Ship['shield'] = $Ship['shield2'] * $Ship['count'];
+					if(($Ship['count'] <= $Ship['count2']) or ($Ship['integrity'] <= 0 and $Ship['destroyed'] == 0)){
+						if(in_array($Ship['ship'], $reslist['fleet']) or (defined('DEFENSE_TO_DEBRIS') and DEFENSE_TO_DEBRIS == 1)){
 							if(UNI_TYPE == 4){
-								$Debris['metal'] += $pricelist[$Pass['ship']]['metal'] * 0.5 * ($Pass['count2'] - $Pass['count']);
-								$Debris['crystal'] += $pricelist[$Pass['ship']]['crystal'] * 0.5 * ($Pass['count2'] - $Pass['count']);							
+								$Debris['metal'] += $pricelist[$Ship['ship']]['metal'] * 0.5 * ($Ship['count2'] - $Ship['count']);
+								$Debris['crystal'] += $pricelist[$Ship['ship']]['crystal'] * 0.5 * ($Ship['count2'] - $Ship['count']);							
 							}else{
-								$Debris['metal'] += $pricelist[$Pass['ship']]['metal'] * 0.3 * ($Pass['count2'] - $Pass['count']);
-								$Debris['crystal'] += $pricelist[$Pass['ship']]['crystal'] * 0.3 * ($Pass['count2'] - $Pass['count']);
+								$Debris['metal'] += $pricelist[$Ship['ship']]['metal'] * 0.3 * ($Ship['count2'] - $Ship['count']);
+								$Debris['crystal'] += $pricelist[$Ship['ship']]['crystal'] * 0.3 * ($Ship['count2'] - $Ship['count']);
 							}
 						}
-						$LostUnits[1] += ($pricelist[$Pass['ship']]['metal'] * ($Pass['count2'] - $Pass['count']) + $pricelist[$Pass['ship']]['crystal'] * ($Pass['count2'] - $Pass['count']) + $pricelist[$Pass['ship']]['deuterium'] * ($Pass['count2'] - $Pass['count']) + $pricelist[$Pass['ship']]['hidrogeno'] * ($Pass['count2'] - $Pass['count']));
-						if($Pass['count'] > 0){
-							$Pass['count2'] = $Pass['count'];
+						$LostUnits[1] += ($pricelist[$Ship['ship']]['metal'] * ($Ship['count2'] - $Ship['count']) + $pricelist[$Ship['ship']]['crystal'] * ($Ship['count2'] - $Ship['count']) + $pricelist[$Ship['ship']]['deuterium'] * ($Ship['count2'] - $Ship['count']) + $pricelist[$Ship['ship']]['hidrogeno'] * ($Ship['count2'] - $Ship['count']));
+						if($Ship['count'] > 0){
+							$Ship['count2'] = $Ship['count'];
 						}else{
-							$Pass['destroyed'] = 1;
-							$Pass['count'] = 0;
-							$Pass['count2'] = 0;
+							$Ship['destroyed'] = 1;
+							$Ship['count'] = 0;
+							$Ship['count2'] = 0;
 						}
-					}
-							
+					}						
 			}	
 		}
 		return array('debris' => $Debris,'lostunits' => $LostUnits);
@@ -282,7 +287,7 @@ class UGaBattle{
 		}
 	}
 	private function WhoWonBattle(){
-
+ 
 			$Attackers = 0;
 			$Defenders = 0;
 			foreach($this->Attackers as $Order => $Player){
@@ -501,13 +506,13 @@ class UGaBattle{
 										$now = true;
 									}
 								}
-
+ 
 					}
 							
 			}	
 		}
 		return array('attack_a' => $TotalAttack,'shield_a' => $TotalShield, 'attack_b' => $TotalAttack2, 'shield_b' => $TotalShield2, 'destroyed_a' => $Destroyed1, 'destroyed_b' => $Destroyed2);
 	}
-
+ 
 }
 ?>
